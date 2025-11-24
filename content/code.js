@@ -1,4 +1,11 @@
-import { ageInDays, haversineMiles, pushMap, geo, sigmoid } from './shared.js'
+import {
+  ageInDays,
+  geo,
+  haversineMiles,
+  posFromHash,
+  pushMap,
+  sigmoid,
+} from './shared.js'
 
 // Global Init
 const map = L.map('map', { worldCopyJump: true }).setView([47.76837, -122.06078], 10);
@@ -97,7 +104,7 @@ function escapeHtml(s) {
 
 function coverageMarker(coverage) {
   const [minLat, minLon, maxLat, maxLon] = geo.decode_bbox(coverage.id);
-  const color = coverage.heard > 0 ? '#07ac07' : '#e96767';
+  const color = coverage.heard > 0 ? '#398821' : '#E04748';
   const totalSamples = coverage.heard + coverage.lost;
   const heardRatio = coverage.heard / totalSamples;
   const date = new Date(coverage.time);
@@ -129,12 +136,13 @@ function coverageMarker(coverage) {
 }
 
 function sampleMarker(s) {
+  const [lat, lon] = posFromHash(s.hash);
   const color = s.path.length > 0 ? '#07ac07' : '#e96767';
   const style = { radius: 5, weight: 1, color: color, fillOpacity: .8 };
-  const marker = L.circleMarker([s.lat, s.lon], style);
+  const marker = L.circleMarker([lat, lon], style);
   const date = new Date(s.time);
   const details = `
-    ${s.lat.toFixed(4)}, ${s.lon.toFixed(4)}<br/>
+    ${lat.toFixed(4)}, ${lon.toFixed(4)}<br/>
     ${date.toLocaleString()}
     ${s.path.length === 0 ? '' : '<br/>Hit: ' + s.path.join(',')}`;
   marker.bindPopup(details, { maxWidth: 320 });
@@ -185,7 +193,7 @@ function getBestRepeater(fromPos, repeaterList) {
   repeaterList.forEach(r => {
     const to = [r.lat, r.lon];
     const elev = r.elev ?? 0; // Allow height to impact distance.
-    const dist = haversineMiles(fromPos, to) - (0.25 * Math.sqrt(elev));
+    const dist = haversineMiles(fromPos, to) - (0.5 * Math.sqrt(elev));
     if (dist < minDist) {
       minDist = dist;
       minRepeater = r;
@@ -298,7 +306,7 @@ function buildIndexes(nodes) {
   // Build coverage items.
   // TODO: service-side.
   nodes.samples.forEach(s => {
-    const key = geo.encode(s.lat, s.lon, 6);
+    const key = s.hash.substring(0, 6);
     let coverage = hashToCoverage.get(key);
     if (!coverage) {
       const { latitude: lat, longitude: lon } = geo.decode(key);

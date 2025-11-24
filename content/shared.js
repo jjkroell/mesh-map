@@ -338,6 +338,10 @@ var import_ngeohash = __toESM(require_main());
 function sampleKey(lat, lon) {
   return import_ngeohash.default.encode(lat, lon, 8);
 }
+function posFromHash(hash) {
+  const { latitude: lat, longitude: lon } = import_ngeohash.default.decode(hash);
+  return [lat, lon];
+}
 function haversineMiles(a, b) {
   const R = 3958.8;
   const toRad = (deg) => deg * Math.PI / 180;
@@ -394,6 +398,7 @@ export {
   export_geo as geo,
   haversineMiles,
   parseLocation,
+  posFromHash,
   pushMap,
   sampleKey,
   sigmoid

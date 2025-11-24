@@ -9,9 +9,8 @@ export async function onRequest(context) {
   const samplesList = await sampleStore.list();
   samplesList.keys.forEach(s => {
     responseData.samples.push({
+      hash: s.name,
       time: s.metadata.time,
-      lat: s.metadata.lat,
-      lon: s.metadata.lon,
       path: s.metadata.path,
     });
   });

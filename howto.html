@@ -17,24 +17,26 @@
     <div class="">
       The map has a few features.
       <ul class="pl-4 text-sm list-disc">
-        <li>Green dot - the mesh was reachable at that location.</li>
-        <li>Red dot - the mesh was not reachable at that location.</li>
+        <li>Green dot - the mesh was reachable at that location (visible for 2 days).</li>
+        <li>Red dot - the mesh was not reachable at that location (visible for 2 days).</li>
+        <li>Green box - the mesh was reachable in this region.</li>
+        <li>Red box - the mesh was not reachable in this region.</li>
         <li>Dashed line - links a green dot to its 1st hop repeater.</li>
         <li>Blue dot - repeater with an advert in the past 1 day.</li>
         <li>Light gray dot - repeater with an advert in the past 5 days.</li>
-        <li>Dark gray dot - repeater without an advery in the past 5 days.</li>
+        <li>Dark gray dot - repeater without an advert in the past 5 days.</li>
       </ul>
     </div>
   </div>
 
   <h2 class="mb-2 text-xl text-slate-100">How it works</h2>
   <div class="mb-2 pl-4 text-base">
-    You send your location to #wardrive in the format "lat.xxxx lon.yyyy". If the bot receives your location, a
-    new point is added to the map indicating you can reach the mesh at that spot.
-    If you want to also log places where you can't reach the mesh, there's a
-    helpful web app you can run on your phone to automate the process.
-    Currently, you have to be heard by 'Devils Lake Repeater [2b]', but the
-    goal is to migrate to using MQTT for more reliable detection.
+    You send your location to #wardrive in the format "lat.xxxx lon.yyyy".
+    If the bot receives your location, a new point is added to the map indicating
+    you can reach the mesh at that spot. If you want to also log places where you
+    can't reach the mesh, there's a helpful web app you can run on your phone to
+    automate the process. To be "heard", your message must be repeated by either
+    PugetMesh Haystack [86] or WW7STR/PugetMesh Cougar [7e].
   </div>
 
   <h2 class="mb-2 text-xl text-slate-100">How you can contribute</h2>
@@ -76,8 +78,7 @@
   <div class="pl-4 text-base">
     The only thing the service stores is the location you send to #wardrive and the id of the 1st hop repeater.
     The web app sends your location to #wardrive and to the service. That's it. Logging on the web app is stored
-    locally.
-    You will be sending your companion radio's name with your location to #wardrive which is a public channel.
+    locally. You will be sending your companion radio's name with your location to #wardrive which is a public channel.
   </div>
 
 </body>

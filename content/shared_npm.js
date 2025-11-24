@@ -7,6 +7,12 @@ export function sampleKey(lat, lon) {
   return geo.encode(lat, lon, 8);
 }
 
+// Gets [lat, lon] for the specified hash.
+export function posFromHash(hash) {
+  const {latitude: lat, longitude: lon} = geo.decode(hash);
+  return [lat, lon];
+}
+
 // Haversine distance between two [lat, lon] points, in miles.
 export function haversineMiles(a, b) {
   const R = 3958.8; // Earth radius in miles

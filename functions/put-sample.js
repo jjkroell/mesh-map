@@ -10,7 +10,7 @@ export async function onRequest(context) {
   const path = data.path ?? [];
 
   const key = sampleKey(lat, lon);
-  const metadata = { time: time, lat: lat, lon: lon, path: path };
+  const metadata = { time: time, path: path };
   const resp = await store.getWithMetadata(key);
 
   if (resp.value !== null && resp.metadata !== null && ageInDays(resp.metadata.time) < 1) {
