@@ -1,20 +1,45 @@
-import { sampleKey } from '../content/shared.js'
+import { sampleKey, posFromHash } from '../content/shared.js'
 
 async function migrateSamples(context) {
   const store = context.env.SAMPLES;
-  const samplesList = await store.list();
+  const toFix = []
+  let cursor = null;
 
-  // Migration from old key to geohash
-  await Promise.all(samplesList.keys.map(async s => {
-    const parts = s.name.split('|');
-    if (parts.length === 2) {
-      const metadata = s.metadata;
-      const key = sampleKey(metadata.lat, metadata.lon);
-      await store.put(key, "", {
-        metadata: metadata,
-      });
-      await store.delete(s.name);
-    }
+  do {
+    const samplesList = await store.list({cursor: cursor});
+    cursor = samplesList.cursor ?? null;
+
+    // // Migration from old key to geohash
+    // await Promise.all(samplesList.keys.map(async s => {
+    //   const parts = s.name.split('|');
+    //   if (parts.length === 2) {
+    //     const metadata = s.metadata;
+    //     const key = sampleKey(metadata.lat, metadata.lon);
+    //     await store.put(key, "", {
+    //       metadata: metadata,
+    //     });
+    //     await store.delete(s.name);
+    //   }
+    // }));
+
+    // Fix up missing paths.
+    samplesList.keys.forEach(s => {
+      if (s.metadata.path.includes('')) {
+        const [lat, lon] = posFromHash(s.name);
+        let path = s.metadata.path;
+        path = path.filter(x => x != '');
+        path.push(lat > 47.7 ? '86' : '7e');
+        const fixed = {key: s.name, metadata: { time: s.metadata.time, path: path }};
+        toFix.push(fixed);
+        console.log(fixed);
+      }
+    });
+  } while (cursor !== null)
+
+  await Promise.all(toFix.map(async s => {
+    await store.put(s.key, "", {
+      metadata: s.metadata,
+    });
   }));
 }
 
