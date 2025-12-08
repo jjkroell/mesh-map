@@ -1,7 +1,7 @@
 // Returns the geohashes all coverage cells with recent data.
 import * as util from '../content/shared.js';
 
-const LOOK_BACK_DAYS = 20;
+const LOOK_BACK_DAYS = 2;
 
 export async function onRequest(context) {
   const coverageStore = context.env.COVERAGE;
