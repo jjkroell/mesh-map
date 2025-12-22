@@ -307,7 +307,7 @@ function coverageMarker(coverage) {
     Updated: ${shortDateStr(updateDate)}
     ${coverage.hrd ? `<br/>Heard: ${shortDateStr(lastHeardDate)}` : ''}
     ${coverage.obs ? `<br/>Observed: ${shortDateStr(lastObservedDate)}` : ''}
-    ${coverage.rptr.size > 0 ? '<br/>Repeaters: ' + coverage.rptr.join(',') : ''}`;
+    ${coverage.rptr.length > 0 ? '<br/>Repeaters: ' + coverage.rptr.join(',') : ''}`;
 
   rect.coverage = coverage;
   rect.bindPopup(details, { maxWidth: 320 });
