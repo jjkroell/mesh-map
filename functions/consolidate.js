@@ -131,7 +131,7 @@ async function mergeCoverage(key, samples, DB) {
       updatedRow.rssi,
       updatedRow.snr,
       JSON.stringify(updatedRow.repeaters),
-      JSON.stringify(updatedRow.entries),
+      JSON.stringify(updatedRow.entries)
     ).run();
 }
 

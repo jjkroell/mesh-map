@@ -141,7 +141,7 @@ async function migrateCoverage1(context, result) {
           updated,
           lastObserved,
           lastHeard,
-          metadata.observed ?? metadata.heard > 0,
+          metadata.observed ?? metadata.heard ?? 0,
           metadata.heard ?? 0,
           metadata.lost ?? 0,
           metadata.rssi ?? null,
@@ -180,6 +180,9 @@ async function migrateCoverage2(context, result) {
 
   for (const c of toUpdate) {
     const value = await context.env.COVERAGE.get(c.hash, "json");
+    if (value == null)
+      continue;
+    
     // Migrate existing values to newest format.
     value.forEach(v => {
       // An older version saved 'time' as a string. Yuck.
@@ -214,7 +217,7 @@ async function migrateCoverage2(context, result) {
   }
 
   for (const c of toUpdate) {
-    const value = await context.env.COVERAGE.delete(c.hash);
+    await context.env.COVERAGE.delete(c.hash);
     result.coverage_deleted_kv++;
   }
 }

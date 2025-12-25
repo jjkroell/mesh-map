@@ -91,7 +91,7 @@ If it says `has_more: true`, then you will need to wait around 10 seconds and ru
 3) Migrate archive - browse to /db-migrate?op=archive
 
 > **MIGRATING COVERAGE IS DIFFERENT** 
-BEFORE YOU START, DISABLE THE MAINTENACE SCRIPT!
+BEFORE YOU START, DISABLE THE MAINTENANCE SCRIPT!
 1) Migrate coverage metadata - browse to /db-migrate?op=coverage-1
     1) This should be pretty quick and once this is done, your map should work again.
 2) Migrate coverage data - browse to /db-migrate?op=coverage-2
