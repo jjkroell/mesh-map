@@ -58,6 +58,7 @@ mapControl.onAdd = m => {
             <option value="observedPct" title="Darker is higher observed rate">Observed %</option>
             <option value="heardPct" title="Darker is higher heard rate">Heard %</option>
             <option value="notRepeated" title="Darker is high heard to observed ratio.">Heard, Not Repeated</option>
+            <option value="bySnr" title="Darker better SNR.">SNR</option>
             <option value="lastObserved" title="Darker is more recently observed">Last Observed</option>
             <option value="lastHeard" title="Darker is more recently heard">Last Heard</option>
             <option value="lastUpdated" title="Darker is more recently pinged">Last Updated</option>
@@ -92,6 +93,16 @@ mapControl.onAdd = m => {
       <div class="mesh-control-row">
         <button type="button" id="refresh-map-button">Refresh map</button>
       </div>
+      <!--<div class="mesh-control-row color-scale" id="color-scale">
+        <span>12</span>
+        <span>25</span>
+        <span>37</span>
+        <span>50</span>
+        <span>62</span>
+        <span>75</span>
+        <span>87</span>
+        <span>100</span>
+      </div>-->
     </div>
   `;
 
@@ -135,6 +146,13 @@ mapControl.onAdd = m => {
   // Don’t let clicks on the control bubble up and pan/zoom the map.
   L.DomEvent.disableClickPropagation(div);
   L.DomEvent.disableScrollPropagation(div);
+
+  // // Color the scale.
+  // const scale = div.querySelector("#color-scale");
+  // for (const span of scale.children) {
+  //   const value = Number(span.textContent) / 100;
+  //   span.style.backgroundColor = getColorForValue(value);
+  // }
 
   return div;
 };
@@ -193,6 +211,18 @@ function shortDateStr(d) {
   });
 }
 
+// Gets a color for a value [0, 1]
+function getColorForValue(v) {
+  if (v > .875) return "#1EB100";
+  if (v > .75) return "#00A1FE";
+  if (v > .625) return "#1EE5CE";
+  if (v > .5) return "#F9E231";
+  if (v > .375) return "#FF9400";
+  if (v > .25) return "#FF634D";
+  if (v > .125) return "#ED230D";
+  return "#B51700";
+}
+
 function getCoverageStyle(coverage) {
   const obsColor = '#398821'; // Observed - Green
   const hrdColor = '#FEAA2C'; // Heard - Orange
@@ -227,6 +257,8 @@ function getCoverageStyle(coverage) {
       const sampleCount = coverage.obs + coverage.lost;
       const observedPercent = coverage.obs / sampleCount;
       style.fillOpacity = Math.min(0.9, Math.max(0.1, observedPercent));
+      //style.color = getColorForValue(observedPercent);
+      //style.fillOpacity = 0.8;
       break;
     }
 
@@ -242,6 +274,17 @@ function getCoverageStyle(coverage) {
       if (sum > 0) {
         const heardRatio = coverage.hrd / sum;
         style.fillOpacity = Math.min(0.9, Math.max(0.1, heardRatio));
+      } else {
+        style.fillOpacity = 0.1;
+      }
+      break;
+    }
+
+    case 'bySnr': {
+      if (coverage.snr != null) {
+        const snr = coverage.snr / 12; // Normalize to about [-1, 1]
+        style.color = snr > 0 ? obsColor : missColor;
+        style.fillOpacity = Math.min(0.9, Math.abs(snr));
       } else {
         style.fillOpacity = 0.1;
       }
@@ -292,24 +335,28 @@ function getCoverageStyle(coverage) {
   return style;
 }
 
-function coverageMarker(coverage) {
-  const [minLat, minLon, maxLat, maxLon] = geo.decode_bbox(coverage.id);
-  const totalSamples = coverage.hrd + coverage.lost;
-  const obsRatio = coverage.obs / totalSamples;
-  const updateDate = new Date(fromTruncatedTime(coverage.ut));
-  const lastHeardDate = new Date(fromTruncatedTime(coverage.lht));
-  const lastObservedDate = new Date(fromTruncatedTime(coverage.lot));
-  const style = getCoverageStyle(coverage);
+function coverageMarker(c) {
+  const [minLat, minLon, maxLat, maxLon] = geo.decode_bbox(c.id);
+  const totalSamples = c.hrd + c.lost;
+  const obsRatio = c.obs / totalSamples;
+  const updateDate = new Date(fromTruncatedTime(c.ut));
+  const lastHeardDate = new Date(fromTruncatedTime(c.lht));
+  const lastObservedDate = new Date(fromTruncatedTime(c.lot));
+  const style = getCoverageStyle(c);
   const rect = L.rectangle([[minLat, minLon], [maxLat, maxLon]], style);
   const details = `
-    <strong>${coverage.id}</strong><br/>
-    Observed: ${coverage.obs} &middot; Heard: ${coverage.hrd} &middot; Lost: ${coverage.lost} (${(100 * obsRatio).toFixed(0)}%)<br/>
-    Updated: ${shortDateStr(updateDate)}
-    ${coverage.hrd ? `<br/>Heard: ${shortDateStr(lastHeardDate)}` : ''}
-    ${coverage.obs ? `<br/>Observed: ${shortDateStr(lastObservedDate)}` : ''}
-    ${coverage.rptr.length > 0 ? '<br/>Repeaters: ' + coverage.rptr.join(',') : ''}`;
+    <div><b>${c.id} · (${(100 * obsRatio).toFixed(0)}%)</b>
+    <span class="text-xs">${maxLat.toFixed(4)},${maxLon.toFixed(4)}</span></div>
+    <div>Observed: ${c.obs} · Heard: ${c.hrd} · Lost: ${c.lost}</div>
+    ${c.snr ? `<div>SNR: ${c.snr ?? '✕'} · RSSI: ${c.rssi ?? '✕'}</div>` : ''}
+    ${c.rptr.length > 0 ? `<div>Repeaters: ${c.rptr.join(', ')}</div>` : ''}
+    <div class="text-xs">
+    <div>Updated: ${shortDateStr(updateDate)}</div>
+    ${c.hrd ? `<div>Heard: ${shortDateStr(lastHeardDate)}</div>` : ''}
+    ${c.obs ? `<div>Observed: ${shortDateStr(lastObservedDate)}</div>` : ''}
+    </div>`;
 
-  rect.coverage = coverage;
+  rect.coverage = c;
   rect.bindPopup(details, { maxWidth: 320 });
   rect.on('popupopen', e => updateAllEdgeVisibility(e.target.coverage, false));
   rect.on('popupclose', () => updateAllEdgeVisibility());
@@ -319,7 +366,7 @@ function coverageMarker(coverage) {
     rect.on('mouseout', () => updateAllEdgeVisibility());
   }
 
-  coverage.marker = rect;
+  c.marker = rect;
   return rect;
 }
 
@@ -345,10 +392,11 @@ function sampleMarker(s) {
   const marker = L.circleMarker([lat, lon], style);
   const date = new Date(fromTruncatedTime(s.time));
   const details = `
-    ${lat.toFixed(4)}, ${lon.toFixed(4)}<br/>
-    ${shortDateStr(date)}
-    ${s.snr && s.rssi ? `<br/>SNR:${s.snr}, RSSI:${s.rssi}` : ''}
-    ${path.length === 0 ? '' : '<br/>Hit: ' + path.join(',')}`;
+    <div><b>${lat.toFixed(4)}, ${lon.toFixed(4)}</b></div>
+    ${s.snr && s.rssi ? `<div>SNR: ${s.snr} · RSSI: ${s.rssi}</div>` : ''}
+    ${path.length > 0 ? `<div>Hit: ${path.join(', ')}</div>` : ''}
+    <div class="text-xs">${shortDateStr(date)}</div>
+    <div class="text-xs">Geohash: ${s.id}</div>`;
   marker.bindPopup(details, { maxWidth: 320 });
   marker.on('add', () => updateSampleMarkerVisibility(marker));
   return marker;
@@ -365,11 +413,11 @@ function repeaterMarker(r) {
     iconSize: [20, 20],
     iconAnchor: [10, 10]
   });
-  const details = [
-    `<strong>${escapeHtml(r.name)} [${r.id}]</strong>`,
-    `${r.lat.toFixed(4)}, ${r.lon.toFixed(4)} · <em>${(r.elev).toFixed(0)}m</em>`,
-    `${shortDateStr(new Date(time))}`
-  ].join('<br/>');
+  const details = `
+    <div><b>${escapeHtml(r.name)} [${r.id}]</b></div>
+    <div>${r.lat.toFixed(4)}, ${r.lon.toFixed(4)} · <em>${(r.elev).toFixed(0)}m</em></div>
+    <div class="text-xs">Last advert: ${shortDateStr(new Date(time))}</div>
+    <div class="text-xs">Geohash: ${r.hash}</div>`;
   const marker = L.marker([r.lat, r.lon], { icon: icon });
 
   marker.repeater = r;
