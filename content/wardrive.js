@@ -271,13 +271,12 @@ function addPingHistory(ping) {
 
 function addPingMarker(ping) {
   function getPingColor(p) {
-    if (p.observed === true)
+    if (p.observed)
       return '#398821' // Observed - Green
-    if (p.heard == true)
+    if (p.heard)
       return '#FEAA2C' // Repeated - Orange
-    if (p.heard === false)
+    else
       return '#E04748' // Miss - Red
-    return "#999999"; // Unknown - Gray
   }
 
   const pos = posFromHash(ping.hash);
