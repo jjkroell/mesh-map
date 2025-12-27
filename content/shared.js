@@ -1156,6 +1156,14 @@ function or(a2, b2) {
 function and(a2, b2) {
   return a2 && b2;
 }
+function clamp(val, min, max) {
+  return Math.max(min, Math.min(val, max));
+}
+function lerp(val, min, max) {
+  const range = max - min;
+  const delta = val - min;
+  return clamp(delta / range, 0, 1);
+}
 function fadeColor(color, amount) {
   const c2 = w(color);
   const v2 = c2.toHsv().v;
@@ -1175,6 +1183,7 @@ export {
   ageInDays,
   and,
   centerPos,
+  clamp,
   dayInMillis,
   definedOr,
   fadeColor,
@@ -1185,6 +1194,7 @@ export {
   getOrAdd,
   haversineMiles,
   isValidLocation,
+  lerp,
   maxDistanceMiles,
   or,
   parseLocation,

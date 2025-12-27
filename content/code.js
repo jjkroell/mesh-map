@@ -1,9 +1,11 @@
 import {
   ageInDays,
   centerPos,
+  clamp,
   definedOr,
   geo,
   haversineMiles,
+  lerp,
   maxDistanceMiles,
   posFromHash,
   pushMap,
@@ -24,9 +26,10 @@ const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 // Control state
 let coloringMode = 'simple';
-let repeaterRenderMode = 'hit';
+let repeaterRenderMode = 'none';
 let repeaterSearch = '';
 let showSamples = false;
+let useColorScale = true;
 
 // Data
 let nodes = null; // Graph data from the last refresh
@@ -54,18 +57,18 @@ mapControl.onAdd = m => {
           Coloring:
           <select id="coverage-colormode-select">
             <option value="simple" title="Green for heard, Red for lost" selected>Simple</option>
-            <option value="effective" title="Darker is confidence of message success or fail">Effective Coverage</option>
-            <option value="observedPct" title="Darker is higher observed rate">Observed %</option>
-            <option value="heardPct" title="Darker is higher heard rate">Heard %</option>
-            <option value="notRepeated" title="Darker is high heard to observed ratio.">Heard, Not Repeated</option>
-            <option value="bySnr" title="Darker better SNR.">SNR</option>
-            <option value="byRssi" title="Darker better RSSI.">RSSI</option>
-            <option value="lastObserved" title="Darker is more recently observed">Last Observed</option>
-            <option value="lastHeard" title="Darker is more recently heard">Last Heard</option>
-            <option value="lastUpdated" title="Darker is more recently pinged">Last Updated</option>
-            <option value="pastDay" title="Tiles updated in the past 1 day are dark">Past Day</option>
-            <option value="repeaterCount" title="Darker indicates more repeaters">Repeater Count</option>
-            <option value="sampleCount" title="Darker indicates more samples">Sample Count</option>
+            <option value="effective" title="Confidence of message success or fail (50 == inconclusive).">Effective Coverage</option>
+            <option value="observedPct" title="Observed ping rate">Observed %</option>
+            <option value="heardPct" title="Heard ping rate">Heard %</option>
+            <option value="notRepeated" title="Ratio of heard to observed (Higher is worse)">Heard, Not Repeated</option>
+            <option value="bySnr" title="SNR normalized as percentage">SNR</option>
+            <option value="byRssi" title="RSSI normalized as percentage">RSSI</option>
+            <option value="lastObserved" title="Higher is more recently observed">Last Observed</option>
+            <option value="lastHeard" title="Higher is more recently heard">Last Heard</option>
+            <option value="lastUpdated" title="Higher is more recently pinged">Last Updated</option>
+            <option value="pastDay" title="Tiles updated in the past 1 day">Past Day</option>
+            <option value="repeaterCount" title="Higher indicates more repeaters">Repeater Count</option>
+            <option value="sampleCount" title="Higher indicates more samples">Sample Count</option>
           </select>
         </label>
       </div>
@@ -74,8 +77,8 @@ mapControl.onAdd = m => {
           Repeaters:
           <select id="repeater-filter-select">
             <option value="all" title="Show all repeaters">All</option>
-            <option value="hit" title="Show repeaters hit by pings" selected>Hit</option>
-            <option value="none" title="Hide all repeaters">None</option>
+            <option value="hit" title="Show repeaters hit by pings">Hit</option>
+            <option value="none" title="Hide all repeaters" selected>None</option>
           </select>
         </label>
       </div>
@@ -92,13 +95,15 @@ mapControl.onAdd = m => {
         </label>
       </div>
       <div class="mesh-control-row">
-        <button type="button" id="refresh-map-button">Refresh map</button>
-        <!--<label>
-          🌈
-          <input type="checkbox" id="use-colorscale" />
-        </label>-->
+        <div style="display: flex; gap: 10px;">
+          <button type="button" id="refresh-map-button">Refresh map</button>
+          <label style="gap: 1px;">
+            🌈
+            <input type="checkbox" id="use-colorscale" checked/>
+          </label>
+        </div>
       </div>
-      <!--<div class="mesh-control-row color-scale" id="color-scale">
+      <div class="mesh-control-row color-scale" id="color-scale">
         <span>12</span>
         <span>25</span>
         <span>37</span>
@@ -107,7 +112,7 @@ mapControl.onAdd = m => {
         <span>75</span>
         <span>87</span>
         <span>100</span>
-      </div>-->
+      </div>
     </div>
   `;
 
@@ -147,22 +152,38 @@ mapControl.onAdd = m => {
   div.querySelector("#refresh-map-button")
     .addEventListener("click", () => refreshCoverage());
 
+  div.querySelector("#use-colorscale")
+    .addEventListener("change", (e) => {
+      const colorScaleEl = document.getElementById("color-scale");
+      useColorScale = e.target.checked;
+
+      if (useColorScale) {
+        colorScaleEl.classList.remove("hidden");
+        colorScaleEl.classList.add("mesh-control-row");
+      } else {
+        colorScaleEl.classList.add("hidden");
+        colorScaleEl.classList.remove("mesh-control-row");
+      }
+      renderNodes(nodes);
+    });
+
 
   // Don’t let clicks on the control bubble up and pan/zoom the map.
   L.DomEvent.disableClickPropagation(div);
   L.DomEvent.disableScrollPropagation(div);
 
-  // // Color the scale.
-  // const scale = div.querySelector("#color-scale");
-  // for (const span of scale.children) {
-  //   const value = Number(span.textContent) / 100;
-  //   span.style.backgroundColor = getColorForValue(value);
-  // }
+  // Color the scale.
+  const scale = div.querySelector("#color-scale");
+  for (const span of scale.children) {
+    const value = Number(span.textContent) / 100;
+    span.style.backgroundColor = getColorForValue(value);
+  }
 
   return div;
 };
 mapControl.addTo(map);
 
+// Top Repeaters
 const repeaterStatsControl = L.control({ position: 'topright' });
 repeaterStatsControl.onAdd = m => {
   const div = L.DomUtil.create('div', 'mesh-control leaflet-control');
@@ -190,6 +211,7 @@ repeaterStatsControl.onAdd = m => {
 };
 repeaterStatsControl.addTo(map);
 
+// Top Contributors
 const senderStatsControl = L.control({ position: 'topright' });
 senderStatsControl.onAdd = m => {
   const div = L.DomUtil.create('div', 'mesh-control leaflet-control');
@@ -264,14 +286,14 @@ function shortDateStr(d) {
 
 // Gets a color for a value [0, 1]
 function getColorForValue(v) {
-  if (v > .875) return "#1EB100";
-  if (v > .75) return "#00A1FE";
-  if (v > .625) return "#1EE5CE";
-  if (v > .5) return "#F9E231";
-  if (v > .375) return "#FF9400";
-  if (v > .25) return "#FF634D";
-  if (v > .125) return "#ED230D";
-  return "#B51700";
+  if (v > .875) return "#E4572E";  // red-orange
+  if (v > .75) return "#F18F01";  // orange
+  if (v > .625) return "#F4B63D";  // amber
+  if (v > .5) return "#F1E04F";  // yellow
+  if (v > .375) return "#2EC7D3";  // cyan
+  if (v > .25) return "#2F8EDB";  // azure
+  if (v > .125) return "#3F5CCB";  // royal blue
+  return "#2B2D9F";                // indigo
 }
 
 function getCoverageStyle(coverage) {
@@ -290,33 +312,48 @@ function getCoverageStyle(coverage) {
   const style = {
     color: color,
     fillOpacity: 0.6,
-    opacity: 0.8,
+    opacity: 0.75,
     weight: 1,
     pane: "overlayPane"
   };
 
   switch (coloringMode) {
     case 'effective': {
-      // Hits get a little boost. Only counting actual observations.
+      // Hits get boosted. Only counting observations.
       const combined = coverage.obs * 0.25 - coverage.lost * 0.125;
-      style.color = combined > 0 ? obsColor : missColor;
-      style.fillOpacity = Math.min(0.9, Math.abs(combined));
+      if (useColorScale) {
+        style.fillColor = getColorForValue(lerp(combined, -1, 1));
+        style.opacity = 0;
+        style.fillOpacity = 0.8;
+      } else {
+        style.color = combined > 0 ? obsColor : missColor;
+        style.opacity = 0.3;
+        style.fillOpacity = clamp(combined, 0.1, 0.9);
+      }
       break;
     }
 
     case 'observedPct': {
       const sampleCount = coverage.obs + coverage.lost;
       const observedPercent = coverage.obs / sampleCount;
-      style.fillOpacity = Math.min(0.9, Math.max(0.1, observedPercent));
-      //style.color = getColorForValue(observedPercent);
-      //style.fillOpacity = 0.8;
+      if (useColorScale) {
+        style.color = getColorForValue(observedPercent);
+      } else {
+        style.opacity = 0.5;
+        style.fillOpacity = clamp(observedPercent, 0.1, 0.9);
+      }
       break;
     }
 
     case 'heardPct': {
       const sampleCount = coverage.hrd + coverage.lost;
       const heardPercent = coverage.hrd / sampleCount;
-      style.fillOpacity = Math.min(0.9, Math.max(0.1, heardPercent));
+      if (useColorScale) {
+        style.color = getColorForValue(heardPercent);
+      } else {
+        style.opacity = 0.5;
+        style.fillOpacity = clamp(heardPercent, 0.1, 0.9);
+      }
       break;
     }
 
@@ -324,8 +361,13 @@ function getCoverageStyle(coverage) {
       const sum = coverage.obs * 3 + coverage.hrd;
       if (sum > 0) {
         const heardRatio = coverage.hrd / sum;
-        style.fillOpacity = Math.min(0.9, Math.max(0.1, heardRatio));
+        if (useColorScale) {
+          style.color = getColorForValue(heardRatio);
+        } else {
+          style.fillOpacity = clamp(heardRatio, 0.1, 0.9);
+        }
       } else {
+        style.opacity = 0.1;
         style.fillOpacity = 0.1;
       }
       break;
@@ -333,9 +375,14 @@ function getCoverageStyle(coverage) {
 
     case 'bySnr': {
       if (coverage.snr != null) {
-        const snr = coverage.snr / 12; // Normalize to about [-1, 1]
-        style.color = snr > 0 ? obsColor : missColor;
-        style.fillOpacity = Math.min(0.9, Math.abs(snr));
+        if (useColorScale) {
+          style.color = getColorForValue(lerp(coverage.snr, -12, 12));
+          style.fillOpacity = 0.85;
+        } else {
+          const snr = coverage.snr / 12; // Normalize to about [-1, 1]
+          style.color = snr > 0 ? obsColor : missColor;
+          style.fillOpacity = Math.min(0.9, Math.abs(snr));
+        }
       } else {
         style.opacity = 0.2;
         style.fillOpacity = 0;
@@ -345,10 +392,15 @@ function getCoverageStyle(coverage) {
 
     case 'byRssi': {
       if (coverage.rssi != null) {
-        // Normalize to about [-1, 1], centered on -80
-        const rssi = 2 * sigmoid(coverage.rssi, 0.05, -80) - 1;
-        style.color = rssi > 0 ? obsColor : missColor;
-        style.fillOpacity = Math.min(0.9, Math.abs(rssi));
+        if (useColorScale) {
+          style.color = getColorForValue(lerp(coverage.rssi, -100, -40));
+          style.fillOpacity = 0.85;
+        } else {
+          // Normalize to about [-1, 1], centered on -80
+          const rssi = 2 * sigmoid(coverage.rssi, 0.05, -80) - 1;
+          style.color = rssi > 0 ? obsColor : missColor;
+          style.fillOpacity = Math.min(0.9, Math.abs(rssi));
+        }
       } else {
         style.opacity = 0.2;
         style.fillOpacity = 0;
@@ -358,19 +410,31 @@ function getCoverageStyle(coverage) {
 
     case 'lastObserved': {
       const age = ageInDays(fromTruncatedTime(coverage.lot));
-      style.fillOpacity = Math.max(0.1, (-0.075 * age + 0.85));
+      if (useColorScale) {
+        style.color = getColorForValue(lerp(age, 30, 0));
+      } else {
+        style.fillOpacity = Math.max(0.1, (-0.075 * age + 0.85));
+      }
       break;
     }
 
     case 'lastHeard': {
       const age = ageInDays(fromTruncatedTime(coverage.lht));
-      style.fillOpacity = Math.max(0.1, (-0.075 * age + 0.85));
+      if (useColorScale) {
+        style.color = getColorForValue(lerp(age, 30, 0));
+      } else {
+        style.fillOpacity = Math.max(0.1, (-0.075 * age + 0.85));
+      }
       break;
     }
 
     case 'lastUpdated': {
       const age = ageInDays(fromTruncatedTime(coverage.ut));
-      style.fillOpacity = Math.max(0.1, (-0.02 * age + 0.85));
+      if (useColorScale) {
+        style.color = getColorForValue(lerp(age, 30, 0));
+      } else {
+        style.fillOpacity = Math.max(0.1, (-0.075 * age + 0.85));
+      }
       break;
     }
 
@@ -382,19 +446,31 @@ function getCoverageStyle(coverage) {
     }
 
     case 'repeaterCount': {
-      if (coverage.rptr?.length)
-        style.fillOpacity = Math.min(0.9, sigmoid((coverage.rptr?.length ?? 0), 0.75, 1));
-      else
+      const repeaterCount = coverage.rptr?.length;
+      if (repeaterCount) {
+        if (useColorScale) {
+          style.color = getColorForValue(lerp(repeaterCount, 1, 5));
+          style.fillOpacity = 0.8;
+        } else {
+          style.fillOpacity = Math.min(0.9, sigmoid(repeaterCount, 0.75, 1));
+        }
+      } else {
+        style.opacity = 0.2;
         style.fillOpacity = 0;
+      }
       break;
     }
 
     case 'sampleCount': {
       // Heard is a superset of Observed.
       const sampleCount = coverage.hrd + coverage.lost;
-      style.fillOpacity = Math.min(0.9, sigmoid(sampleCount, 0.5, 3));
+      if (useColorScale) {
+        style.color = getColorForValue(lerp(sampleCount, 1, 10));
+        style.fillOpacity = 0.8;
+      } else {
+        style.fillOpacity = Math.min(0.9, sigmoid(sampleCount, 0.5, 3));
+      }
     }
-
     default: break;
   }
 

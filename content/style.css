@@ -6,9 +6,9 @@ body,
 }
 
 .hidden {
-  opacity: 0;
-  display: none;
-  pointer-events: none;
+  opacity: 0 !important;
+  display: none !important;
+  pointer-events: none !important;
 }
 
 .interactive {
@@ -101,7 +101,7 @@ body,
 
 .mesh-control-row label {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   font-weight: 500;
 }
 
@@ -182,6 +182,7 @@ body,
 .mesh-control .max-height-20 {
   max-height: 15em;
   overflow: scroll;
+  overflow-x: hidden;
 }
 
 .color-scale {

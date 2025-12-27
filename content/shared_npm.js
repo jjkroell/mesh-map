@@ -146,6 +146,16 @@ export function definedOr(fn, a, b) {
 export function or(a, b) { return a || b; }
 export function and(a, b) {return  a && b; }
 
+export function clamp(val, min, max) {
+  return Math.max(min, Math.min(val, max));
+}
+
+export function lerp(val, min, max) {
+  const range = max - min;
+  const delta = val - min;
+  return clamp(delta / range, 0, 1);
+}
+
 export function fadeColor(color, amount) {
   const c = colord(color);
   const v = c.toHsv().v;
