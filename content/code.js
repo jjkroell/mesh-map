@@ -190,7 +190,7 @@ repeaterStatsControl.onAdd = m => {
 
   div.innerHTML = `
     <div id="topRepeatersSection" class="mesh-control-row mesh-control-title interactive">Top Repeaters</div>
-    <div id="topRepeatersList" class="mesh-control-row hidden"></div>
+    <div id="topRepeatersList" class="mesh-control-row hidden max-height-20"></div>
   `;
 
   div.querySelector("#topRepeatersSection")
@@ -247,8 +247,9 @@ senderStatsControl.onAdd = m => {
       const data = await resp.json();
       if (topList && data) {
         topList.innerHTML = '';
+        let rank = 1;
         data.forEach(d => {
-          topList.innerHTML += `<div class="top-row"><div>${escapeHtml(d.name)}</div><div>${d.tiles}</div></div>`;
+          topList.innerHTML += `<div class="top-row"><div>${rank++}</div><div>${escapeHtml(d.name)}</div><div>${d.tiles}</div></div>`;
         });
       }
     }
@@ -725,8 +726,9 @@ function renderTopRepeaters() {
   const topList = document.getElementById('topRepeatersList');
   if (topList && topRepeaters) {
     topList.innerHTML = '';
+    let rank = 1;
     topRepeaters.forEach(([id, count]) => {
-      topList.innerHTML += `<div class="top-row"><div>${escapeHtml(id)}</div><div>${count}</div></div>`;
+      topList.innerHTML += `<div class="top-row"><div>${rank++}</div><div>${escapeHtml(id)}</div><div>${count}</div></div>`;
     });
   }
 }
@@ -804,10 +806,10 @@ function buildIndexes(nodes) {
     });
   });
 
-  // Build top repeaters list (top 15).
+  // Build top repeaters list (top 50).
   const repeaterGroups = Object.groupBy(edgeList, e => `[${e.repeater.id}] ${e.repeater.name}`);
   const sortedGroups = Object.entries(repeaterGroups).toSorted(([, a], [, b]) => b.length - a.length);
-  topRepeaters = sortedGroups.slice(0, 15).map(([id, tiles]) => [id, tiles.length]);
+  topRepeaters = sortedGroups.slice(0, 50).map(([id, tiles]) => [id, tiles.length]);
 }
 
 export async function refreshCoverage() {

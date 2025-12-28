@@ -84,7 +84,7 @@ body,
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   font-size: 14px;
   line-height: 1.4;
-  width: 12em;
+  width: 12.5em;
 }
 
 .mesh-control-row {
@@ -166,7 +166,17 @@ body,
   background-color: #e5e5e5;
 }
 
-.mesh-control .top-row div:first-child {
+/* rank col */
+.mesh-control .top-row div:nth-child(1) {
+  flex: 0 0 1.5em;
+  white-space: nowrap;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+}
+
+/* name col */
+.mesh-control .top-row div:nth-child(2) {
   flex: 1 1 auto;
   white-space: nowrap;
   overflow: hidden;
@@ -174,7 +184,8 @@ body,
   text-overflow: ellipsis; 
 }
 
-.mesh-control .top-row div:last-child {
+/* count col */
+.mesh-control .top-row div:nth-child(3) {
   flex: 0 0 auto;
   white-space: nowrap;
 }
