@@ -719,7 +719,6 @@ function stopAutoPing() {
   }
   state.running = false;
   updateAutoButton();
-  releaseWakeLock();
 }
 
 async function startAutoPing() {
@@ -742,8 +741,6 @@ async function startAutoPing() {
   state.autoTimerId = setInterval(() => {
     sendPing({ auto: true }).catch(console.error);
   }, intervalMs);
-
-  await acquireWakeLock();
 }
 
 // --- Connection handling ---
@@ -812,6 +809,7 @@ async function onConnected() {
 
     // Don't enable ping buttons until after ensure channel.
     updateControlsForConnection(true);
+    await acquireWakeLock();
   } catch (e) {
     console.error("Error during initial sync", e);
     setStatus("Connected, Failed init", "text-amber-300");
@@ -833,6 +831,7 @@ function onDisconnected() {
 
   updateControlsForConnection(false);
   setStatus("Disconnected", "text-red-300");
+  releaseWakeLock();
 }
 
 // --- RX log handling ---
@@ -964,10 +963,10 @@ async function onLogRxData(frame) {
 
 // --- Event bindings ---
 connectBtn.addEventListener("click", () => {
-  if (!state.connection)
-    handleConnect().catch(console.error);
-  else
+  if (state.connection)
     handleDisconnect().catch(console.error);
+  else
+    handleConnect().catch(console.error);
 });
 
 sendPingBtn.addEventListener("click", () => {
@@ -998,7 +997,7 @@ document.addEventListener('visibilitychange', async () => {
   } else {
     await startLocationTracking();
 
-    if (state.running)
+    if (state.connection)
       await acquireWakeLock();
   }
 });
@@ -1008,7 +1007,7 @@ if ('bluetooth' in navigator) {
   navigator.bluetooth.addEventListener('backgroundstatechanged',
     (e) => {
       const isBackground = e.target.value;
-      if (isBackground == true && state.running) {
+      if (isBackground == true && state.connection) {
         stopAutoPing();
         setStatus('Lost focus, Stopped', 'text-amber-300');
       }
