@@ -30,6 +30,7 @@ const connectBtn = $("connectBtn");
 const sendPingBtn = $("sendPingBtn");
 const autoToggleBtn = $("autoToggleBtn");
 const ignoredRepeaterBtn = $("ignoredRepeaterBtn");
+const rxLogStatusEl = $("rxLogStatus");
 
 // Channel key is derived from the channel hashtag.
 // Channel hash is derived from the channel key.
@@ -830,6 +831,18 @@ function onDisconnected() {
 }
 
 // --- RX log handling ---
+function blinkRxLog() {
+  rxLogStatusEl.classList.remove("bg-zinc-500");
+  rxLogStatusEl.classList.add("bg-emerald-400");
+
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      rxLogStatusEl.classList.add("bg-zinc-500");
+      rxLogStatusEl.classList.remove("bg-emerald-400");
+    }, 150);
+  });
+}
+
 function pushRxHistory(hash) {
   // Add and keep the most recent 10. This goal is to prevent the
   // client from spamming a single tile, but also allow it to
@@ -909,6 +922,7 @@ async function onLogRxData(frame) {
     || packet.path.length == 0)
     return;
 
+  blinkRxLog();
   await trySendRxSample(packet, lastSnr, lastRssi);
 
   // First repeater (ignoring mobile repeater).
