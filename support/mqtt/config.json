@@ -7,7 +7,8 @@
     "meshcore/YCD/+/packets",
     "meshcore/YVR/+/packets",
     "meshcore/YSE/+/packets",
-
+  ]
+  
   "service_host": "https://vimesh-map.ve7kod.ca",
   "center_position": 49.787844, -125.451413],
   "valid_dist": 150,
