@@ -1,7 +1,7 @@
 {
   "name": "MeshCore Coverage",
   "short_name": "MC Coverage",
-  "start_url": "/index.html",
+  "start_url": "/coverage.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
