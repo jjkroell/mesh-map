@@ -397,10 +397,10 @@ function getCoverageStyle(coverage) {
     case 'bySnr': {
       if (coverage.snr != null) {
         if (useColorScale) {
-          style.color = getColorForValue(lerp(coverage.snr, -12, 12));
+          style.color = getColorForValue(lerp(coverage.snr, -8, 8));
           style.fillOpacity = 0.85;
         } else {
-          const snr = coverage.snr / 12; // Normalize to about [-1, 1]
+          const snr = coverage.snr / 8; // Normalize to about [-1, 1]
           style.color = snr > 0 ? obsColor : missColor;
           style.fillOpacity = Math.min(0.9, Math.abs(snr));
         }
