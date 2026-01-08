@@ -855,8 +855,8 @@ function blinkRxLog() {
   logoAnimation?.cancel();
   logoAnimation = logoEl.animate(
     [
-        { filter: "grayscale(0)" },
-        { filter: "grayscale(1)" }
+        { filter: "grayscale(0)", opacity: .99 },
+        { filter: "grayscale(1)", opacity: 1 }
     ],
     { duration: 300, easing: "ease-in-out", fill: "forwards" }
   );
