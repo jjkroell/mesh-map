@@ -32,6 +32,7 @@ const sendPingBtn = $("sendPingBtn");
 const autoToggleBtn = $("autoToggleBtn");
 const ignoredRepeaterBtn = $("ignoredRepeaterBtn");
 const logoEl = $("logo");
+let logoAnimation = null;
 
 // Channel key is derived from the channel hashtag.
 // Channel hash is derived from the channel key.
@@ -851,13 +852,14 @@ function onDisconnected() {
 
 // --- RX log handling ---
 function blinkRxLog() {
-  logoEl.classList.remove("grayscale");
-
-  requestAnimationFrame(() => {
-    setTimeout(() => {
-      logoEl.classList.add("grayscale");
-    }, 200);
-  });
+  logoAnimation?.cancel();
+  logoAnimation = logoEl.animate(
+    [
+        { filter: "grayscale(0)" },
+        { filter: "grayscale(1)" }
+    ],
+    { duration: 300, easing: "ease-in-out", fill: "forwards" }
+  );
 }
 
 function pushRxHistory(key) {
